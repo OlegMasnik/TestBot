@@ -1,0 +1,43 @@
+buildscript {
+	ext {
+		springBootVersion = '1.4.1.RELEASE'
+	}
+	repositories {
+		mavenCentral()
+	}
+	dependencies {
+		classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+	}
+}
+
+apply plugin: 'java'
+apply plugin: 'eclipse-wtp'
+apply plugin: 'spring-boot'
+apply plugin: 'war'
+
+
+war {
+	baseName = 'testbot'
+	version = '0.0.1-SNAPSHOT'
+}
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+repositories {
+	mavenCentral()
+}
+
+configurations {
+	providedRuntime
+}
+
+dependencies {
+	compileOnly('org.projectlombok:lombok')
+	compile('org.springframework.boot:spring-boot-starter-social-facebook')
+	compile('org.springframework.boot:spring-boot-starter-web')
+	compile('org.springframework.boot:spring-boot-starter-tomcat')
+	compile("org.springframework.boot:spring-boot-starter-data-jpa")
+	runtime "mysql:mysql-connector-java:5.1.27"
+	compile('org.apache.httpcomponents:httpasyncclient:4.1.1')
+	testCompile("org.springframework.boot:spring-boot-starter-test")
+}
