@@ -4,6 +4,7 @@ import com.botscrew.data.webhook.FbFromButtonDto;
 import com.botscrew.data.webhook.FbRecipientDto;
 import com.botscrew.data.webhook.FbRequestDto;
 import com.botscrew.data.webhook.subclasses.*;
+import com.botscrew.enums.UserState;
 import com.botscrew.model.FbUser;
 import com.botscrew.service.AddressService;
 import com.botscrew.service.BotMessengerService;
@@ -13,6 +14,7 @@ import com.botscrew.util.MyRestTemplate;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.utils.URIBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.net.URISyntaxException;
@@ -46,69 +48,75 @@ public class DefaultBotMessengerService implements BotMessengerService {
         return "failed";
     }
 
+    @Async
     @Override
-    public String sentToMessenger(FbRequestDto botRequest) {
+    public void sentToMessenger(FbRequestDto botRequest) {
         final FbReqEntry entry = botRequest.getEntry().get(0);
         final String curId = getId(entry);
-        curUser = userService.getByIdOrCreateFromFacebook(curId);
-        final FbReqEntryMessaging mess = entry.getMessaging().get(0);
-        if (mess == null) {
-            return "failed";
+        final FbReqEntryMessagingMess mess = entry.getMessaging().get(0).getMessage();
+        if (canRun(mess, entry.getMessaging().get(0).getPostback(), curId)) {
+            curUser = userService.getByIdOrCreateFromFacebook(curId);
+            messageService.save(mess, curUser, entry.getId().toString());
+            switch (curUser.getState()) {
+                case GET_ADDRESS:
+                    sendAddress(entry.getMessaging().get(0));
+                    break;
+                case GET_ANSWER:
+                    sendAnswer(entry);
+                    break;
+                default:
+                    break;
+            }
         }
-        messageService.save(mess, curUser, entry.getId().toString());
-        if (mess.getPostback() != null) {
-            sendAnswer(entry);
-        } else if (mess.getMessage() != null && mess.getMessage().getIsEcho() == null) {
-            sendAddress(entry.getMessaging().get(0));
-        }
-        return "ok";
+    }
+
+    private boolean canRun(FbReqEntryMessagingMess mess, FbReqEntryMessagingPostback postback, String curId) {
+        return ((mess != null && mess.getIsEcho() == null) || postback != null) && curId != null;
     }
 
     private String getId(FbReqEntry entry) {
         final String sender = entry.getMessaging().get(0).getSender().getId();
-        final String recipient = entry.getMessaging().get(0).getRecipient().getId().toString();
-        return entry.getId().toString().equals(sender) ? recipient : sender;
+        return (entry.getId().toPlainString().equals(sender)) ? null : sender;
     }
 
     private void sendAnswer(FbReqEntry entry) {
-
         final FbReqEntryMessaging messaging = entry.getMessaging().get(0);
-        try {
-            final FbRecipientDto recipient = initRecipient(messaging.getSender());
-            String text;
-            if (curUser.getIsActive()) {
-                userService.disable(curUser);
-                text = ADDRESS_CORRECT.equals(messaging.getPostback().getPayload()) ? "Great :)" : "Sorry :(";
-            } else {
-                text = "Sorry, this message isn't active";
-            }
-            setOnlyText(recipient, text);
-            sendResponse(recipient);
-        } catch (URISyntaxException e) {
-            e.printStackTrace();
+        final FbRecipientDto recipient = initRecipient(messaging.getSender());
+        String text;
+        FbReqEntryMessagingPostback postback = messaging.getPostback();
+        if (postback == null) {
+            text = "Please, make your choice.";
+        } else {
+            text = ADDRESS_CORRECT.equals(messaging.getPostback().getPayload()) ? "Great :)" : "Sorry :(";
+            curUser.setState(UserState.GET_ADDRESS);
+            userService.disable(curUser);
         }
+        setOnlyText(recipient, text);
+        sendResponse(recipient);
     }
 
     private void sendAddress(FbReqEntryMessaging messaging) {
-        try {
-            final FbReqEntryMessagingMess message = messaging.getMessage();
-            final FbRecipientDto recipient = initRecipient(messaging.getSender());
-            final String text = message.getText();
-            if (text == null || "".equals(text) || text.length() > 1800) {
-                setOnlyText(recipient, NOT_UNDERSTAND);
-            } else {
-                final String address = addressService.parseAddress(addressService.getAddresses(text));
-                if (AddressService.INVALID_ADDRESS.equals(address) || AddressService.NOT_USA_ADDRESS.equals(address)) {
-                    setOnlyText(recipient, address);
-                } else {
-                    setAttachment(recipient, address);
-                    userService.enable(curUser);
-                }
-            }
+        final FbRecipientDto recipient = initRecipient(messaging.getSender());
+        if (messaging.getPostback() != null){
+            setOnlyText(recipient, "Sorry, this message isn't active");
             sendResponse(recipient);
-        } catch (URISyntaxException e) {
-            e.printStackTrace();
+            return;
         }
+        final FbReqEntryMessagingMess message = messaging.getMessage();
+        final String text = message.getText();
+        if (text == null || "".equals(text) || text.length() > 1800) {
+            setOnlyText(recipient, NOT_UNDERSTAND);
+        } else {
+            final String address = addressService.parseAddress(addressService.getAddresses(text));
+            if (AddressService.INVALID_ADDRESS.equals(address) || AddressService.NOT_USA_ADDRESS.equals(address)) {
+                setOnlyText(recipient, address);
+            } else {
+                setAttachment(recipient, address);
+                curUser.setState(UserState.GET_ANSWER);
+                userService.enable(curUser);
+            }
+        }
+        sendResponse(recipient);
     }
 
     private FbRecipientDto initRecipient(FbRecipientOrSender recipient) {
@@ -117,12 +125,16 @@ public class DefaultBotMessengerService implements BotMessengerService {
         return recipientDto;
     }
 
-    private void sendResponse(final FbRecipientDto recipient) throws URISyntaxException {
-        final URIBuilder builder = new URIBuilder(FB_MESSENGER_BOT_ENDPOINT);
-        builder.setParameter("access_token", FB_MESSENGER_BOT_ACCESS_TOKEN);
-        final HttpPost post = new HttpPost(builder.build());
-        post.setHeader("Content-Type", "application/json; charset=UTF-8");
-        MyRestTemplate.getRestTemplate().postForObject(post.getURI(), recipient, FbFromButtonDto.class);
+    private void sendResponse(final FbRecipientDto recipient) {
+        try {
+            final URIBuilder builder = new URIBuilder(FB_MESSENGER_BOT_ENDPOINT);
+            builder.setParameter("access_token", FB_MESSENGER_BOT_ACCESS_TOKEN);
+            final HttpPost post = new HttpPost(builder.build());
+            post.setHeader("Content-Type", "application/json; charset=UTF-8");
+            MyRestTemplate.getRestTemplate().postForObject(post.getURI(), recipient, FbFromButtonDto.class);
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+        }
     }
 
     private void setOnlyText(final FbRecipientDto recipient, final String oneString) {

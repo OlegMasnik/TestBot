@@ -11,5 +11,5 @@ public interface BotMessengerService {
 
     String verify(final String challenge, final String facebookToken);
 
-    String sentToMessenger(final FbRequestDto botRequest);
+    void sentToMessenger(final FbRequestDto botRequest);
 }

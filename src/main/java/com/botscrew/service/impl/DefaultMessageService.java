@@ -1,7 +1,7 @@
 package com.botscrew.service.impl;
 
 import com.botscrew.dao.FbMessageDao;
-import com.botscrew.data.webhook.subclasses.FbReqEntryMessaging;
+import com.botscrew.data.webhook.subclasses.FbReqEntryMessagingMess;
 import com.botscrew.model.FbMessage;
 import com.botscrew.model.FbUser;
 import com.botscrew.service.MessageService;
@@ -15,9 +15,9 @@ public class DefaultMessageService implements MessageService {
     private FbMessageDao fbMessageDao;
 
     @Override
-    public void save(final FbReqEntryMessaging messaging, final FbUser user, final String appId) {
-        if (messaging.getMessage() != null && messaging.getSender().getId().equals(user.getId())) {
-            save(messaging.getMessage().getText(), user.getId(), appId);
+    public void save(final FbReqEntryMessagingMess messaging, final FbUser user, final String appId) {
+        if (messaging != null) {
+            save(messaging.getText(), user.getId(), appId);
         }
     }
 

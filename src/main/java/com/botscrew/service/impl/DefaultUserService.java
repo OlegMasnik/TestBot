@@ -1,6 +1,7 @@
 package com.botscrew.service.impl;
 
 import com.botscrew.dao.FbUserDao;
+import com.botscrew.enums.UserState;
 import com.botscrew.model.FbUser;
 import com.botscrew.service.BotMessengerService;
 import com.botscrew.service.UserService;
@@ -46,6 +47,7 @@ public class DefaultUserService implements UserService {
             fbUser = getFromFacebook(id);
             fbUser.setId(id);
             fbUser.setIsActive(true);
+            fbUser.setState(UserState.GET_ADDRESS);
             fbUserDao.save(fbUser);
         }
         return fbUserDao.findOne(id);

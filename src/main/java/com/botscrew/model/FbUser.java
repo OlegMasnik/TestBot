@@ -1,5 +1,6 @@
 package com.botscrew.model;
 
+import com.botscrew.enums.UserState;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
@@ -28,14 +29,6 @@ public class FbUser {
     @JsonIgnore
     @Column(name = "is_active")
     private Boolean isActive;
-
-    public FbUser() {}
-
-    public FbUser(String id, String firstName, String lastName, String gender, Boolean isActive) {
-        this.id = id;
-        this.firstName = firstName;
-        this.lastName = lastName;
-        this.gender = gender;
-        this.isActive = isActive;
-    }
+    @JsonIgnore
+    private UserState state;
 }

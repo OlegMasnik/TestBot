@@ -19,10 +19,7 @@ public class AddressController {
     }
 
     @RequestMapping(value = "/fbmessengerbot", method = RequestMethod.POST)
-    public String message(@RequestBody(required = false) FbRequestDto request) {
-        System.out.println("************** POST **************");
-        System.out.println(request);
-        System.out.println("************** POST **************");
-        return botMessengerService.sentToMessenger(request);
+    public void message(@RequestBody(required = false) FbRequestDto request) {
+        botMessengerService.sentToMessenger(request);
     }
 }
