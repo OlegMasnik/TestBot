@@ -16,19 +16,13 @@ public class FbUser {
     @Id
     @JsonIgnore
     private String id;
-
     @JsonProperty("first_name")
     @Column(name = "first_name")
     private String firstName;
-
     @JsonProperty("last_name")
     @Column(name = "last_name")
     private String lastName;
-
     private String gender;
-    @JsonIgnore
-    @Column(name = "is_active")
-    private Boolean isActive;
     @JsonIgnore
     private UserState state;
 }

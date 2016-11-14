@@ -29,24 +29,11 @@ public class DefaultUserService implements UserService {
     }
 
     @Override
-    public void enable(final FbUser user) {
-        user.setIsActive(true);
-        update(user);
-    }
-
-    @Override
-    public void disable(final FbUser user) {
-        user.setIsActive(false);
-        update(user);
-    }
-
-    @Override
     public FbUser getByIdOrCreateFromFacebook(String id) {
         FbUser fbUser = fbUserDao.findOne(id);
         if (fbUser == null) {
             fbUser = getFromFacebook(id);
             fbUser.setId(id);
-            fbUser.setIsActive(true);
             fbUser.setState(UserState.GET_ADDRESS);
             fbUserDao.save(fbUser);
         }

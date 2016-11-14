@@ -8,9 +8,5 @@ public interface UserService {
 
     void update(final FbUser fbUser);
 
-    void enable(final FbUser user);
-
-    void disable(final FbUser user);
-
     FbUser getByIdOrCreateFromFacebook(final String id);
 }

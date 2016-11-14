@@ -89,7 +89,7 @@ public class DefaultBotMessengerService implements BotMessengerService {
         } else {
             text = ADDRESS_CORRECT.equals(messaging.getPostback().getPayload()) ? "Great :)" : "Sorry :(";
             curUser.setState(UserState.GET_ADDRESS);
-            userService.disable(curUser);
+            userService.update(curUser);
         }
         setOnlyText(recipient, text);
         sendResponse(recipient);
@@ -97,7 +97,7 @@ public class DefaultBotMessengerService implements BotMessengerService {
 
     private void sendAddress(FbReqEntryMessaging messaging) {
         final FbRecipientDto recipient = initRecipient(messaging.getSender());
-        if (messaging.getPostback() != null){
+        if (messaging.getPostback() != null) {
             setOnlyText(recipient, "Sorry, this message isn't active");
             sendResponse(recipient);
             return;
@@ -113,7 +113,7 @@ public class DefaultBotMessengerService implements BotMessengerService {
             } else {
                 setAttachment(recipient, address);
                 curUser.setState(UserState.GET_ANSWER);
-                userService.enable(curUser);
+                userService.update(curUser);
             }
         }
         sendResponse(recipient);
